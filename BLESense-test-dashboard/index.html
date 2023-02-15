@@ -94,56 +94,10 @@
       <div class="label">&#128171; Gyroscope</div>
       <div id="gyroscope" class="graph"></div>
     </div>
-
+    
     <div class="square widget">
-      <div class="label">&#128161; RGB LED control</div>
-      <div id="color-picker-container" class="graph"></div>
-    </div>
-
-    <div class="square widget">
-      <div class="label">&#127897;Microphone</div>
-      <div style="position: relative;">
-        <canvas id="mic" class="graph" style="position: absolute; left: 0; top: 0; z-index: 1;"></canvas>
-        <canvas id="micbg" class="graph" style="position: absolute; left: 0; top: 0; z-index: 0;"></canvas>
-      </div>
-    </div>
-
-    <div class="square widget">
-      <div class="label">&#128250;Spectrogram</div>
-      <canvas id="spectrogram" class="graph"></canvas>
-    </div>
-
-    <div class="square widget">
-      <div class="label">&#127912;Colorimeter</div>
-      <canvas id="colors" class="graph"></canvas>
-    </div>
-
-    <div class="short widget">
-      <div class="label">&#127777; Temperature - </div>
-      <div class="label" id="temperature-value"></div>
-      <div class="label">&deg;C</div>
-      <div class="shortgraph" id="temperature"></div>
-    </div>
-
-    <div class="short widget">
-      <div class="label">&#128167; Humidity - </div>
-      <div class="label" id="humidity-value"></div>
-      <div class="label">%</div>
-      <div class="shortgraph" id="humidity"></div>
-
-    </div>
-
-    <div class="short widget">
-      <div class="label">&#9925; Pressure - </div>
-      <div class="label" id="pressure-value"></div>
-      <div class="label">kPa</div>
-      <div class="shortgraph" id="pressure"></div>
-    </div>
-
-    <div class="short widget">
-      <div class="label">&#128073; Proximity - </div>
-      <div class="label" id="proximity-value"></div>
-      <div class="shortgraph" id="proximity"></div>
+      <div class="label">&#128171; Magnetometer</div>
+      <div id="magnetometer" class="graph"></div>
     </div>
 
   </div>
@@ -297,7 +251,7 @@ async function connect() {
     bigButton.style.backgroundColor = 'green';
     msg('connected.');
 
-    initColorPicker();
+    //initColorPicker();
   }
 
   function handleIncoming(sensor, dataReceived) {
@@ -336,10 +290,6 @@ async function connect() {
         clearInterval(BLEsense[sensor].polling);
       }
     }
-    // clear color picker write
-    const colorPickerElement = document.getElementById("color-picker-container");
-    colorPickerElement.removeChild(colorPickerElement.firstChild);
-
     msg('Device ' + device.name + ' is disconnected.');
   }
 
@@ -358,25 +308,7 @@ async function connect() {
   </script>
   <script>
 
-  function initColorPicker(){
-    BLEsense.led.colorPicker = new iro.ColorPicker("#color-picker-container", {
-      width: 150,
-      color: "rgb(255, 0, 0)",
-      borderWidth: 1,
-      borderColor: "#fff",
-      sliderHeight: 6,
-      sliderMargin: 6
-    });
-    // RGB Color Picker
-    BLEsense.led.colorPicker.on('color:change', updateModelLed);
-    function updateModelLed(color){
-      ledLight.color.setHex( "0x"+color.hexString.substring(1,7) );
-      ledMaterial.color.set(color.hexString)   // where r, g, and b are 0 to 1
-      var rgb_values = Uint8Array.of(color.rgb.r,color.rgb.g,color.rgb.b);
-      BLEsense['led'].writeValue = rgb_values;
-      BLEwriteTo('led');
-    }
-  }
+ 
 
   // Graphing
   const colors = ["#FF355E","#FD5B20","#FF6037","#FF9966","#FF9933","#FFCC33","#FFFF66","#FFFF66","#CCFF00","#66FF66","#AAF0D1","#50BFE6","#FF6EFF","#EE34D2","#FF00CC","#FF00CC"];
@@ -415,29 +347,6 @@ async function connect() {
   );
 }
 
-// Microphone spectrum analyser
-function initSpectrum(){
-  var canvas = document.getElementById('mic');
-  const micctx = canvas.getContext('2d');
-  const bucketLabels = Object.keys(BLEsense['microphone'].data);
-  micctx.fillStyle = "#111111";//"rgba("+R+","+G+","+B+")";
-  micctx.fillRect(0, 0, canvas.width, canvas.height);
-  const thickness = canvas.width / bucketLabels.length;
-  canvas = document.getElementById('micbg');
-  const bgctx = canvas.getContext('2d');
-  bgctx.fillStyle = "#111111";
-  bgctx.fillRect(0, 0, 256, 118);
-  var r = 255; g = 0; b = 0;
-
-  for (j=0;j<256;j+=2){
-    for (i=0;i<32;i++){
-      g++;
-      if (j>64) {r-=2;}
-      bgctx.fillStyle = "rgba("+r+","+g+","+b+")";
-      bgctx.fillRect(i*thickness, j, thickness-1, 1);
-    }
-  }
-}
 
 // 3d model
 var renderer = new THREE.WebGLRenderer();
@@ -489,7 +398,7 @@ function init3D(){
   }
 );
 }
-
+/*
 function colorBars(sensor){
   // Color + light
   const canvas = document.getElementById('colors');
@@ -506,42 +415,11 @@ function colorBars(sensor){
     ctx.fillStyle = "rgba("+R+","+G+","+B+")";
     ctx.fillRect(i*thickness, 128, thickness-1, -total/5);
   }
-}
+}*/
 // return last item of array
 Array.prototype.latest = function(){return this[this.length - 1];};
 
-function spectrumAnalyser(sensor){
-  const canvas = document.getElementById('mic');
-  const micctx = canvas.getContext('2d');
-  const bucketLabels = Object.keys(BLEsense[sensor].data);
-  const thickness = canvas.width / bucketLabels.length;
-  micctx.fillStyle = "#111111";
-  micctx.fillRect(0, 0, canvas.width, canvas.height); // mask bars beneath
-  for (i=0;i<bucketLabels.length;i++){
-    var value = BLEsense[sensor].data[bucketLabels[i]].latest(); // display for latest record
-    micctx.clearRect(i*thickness, 128, thickness-1, -value);
-  }
-  spectrogram(sensor);
-}
 
-function spectrogram(sensor){
-  const canvas = document.getElementById('spectrogram');
-  const ctx = canvas.getContext('2d');
-  const bucketLabels = Object.keys(BLEsense[sensor].data);
-  const records = BLEsense[sensor].data[bucketLabels[1]].length;
-  const vthickness = 128/maxRecords;
-  const thickness = canvas.width / bucketLabels.length;
-  ctx.fillStyle = "#111111";
-  ctx.fillRect(0, 0, 256, 256);
-  for (i=0;i<bucketLabels.length;i++){ // for each fft bucket
-    for (j=0;j<records;j++){ // for each record of that bucket
-      var value = ((BLEsense[sensor].data[bucketLabels[i]][j])/255);
-      var hue = (1 - value) * 240;
-      ctx.fillStyle = "hsl("+hue+",100%,50%)";
-      if (value<0.02) {ctx.fillStyle = "#111111";}
-      ctx.fillRect(i*thickness,j*vthickness, thickness-1,vthickness-1);}
-    }
-  }
 
   function graph(sensor){
     var labels = Object.keys(BLEsense[sensor].data);
@@ -589,14 +467,11 @@ function spectrogram(sensor){
       }
     }
     if (skip_frame == false){ // TODO update with fuction to iterate object with viz function as a property
-      updateViz('colorimeter', [colorBars]);
-      updateViz('microphone', [spectrumAnalyser]);
+     
       updateViz('gyroscope', [graph]);
       updateViz('accelerometer', [graph,update3d]);
-      updateViz('proximity', [digit]);
-      updateViz('temperature', [graph,digit]);
-      updateViz('humidity', [graph,digit]);
-      updateViz('pressure', [graph,digit]);
+      updateViz('magnetometer', [graph]);
+
       //bytes();
 
       skip_frame = true; // render alternate frames = 30fps
@@ -606,10 +481,8 @@ function spectrogram(sensor){
 
   initGraph('accelerometer');
   initGraph('gyroscope');
-  initGraph('temperature');
-  initGraph('humidity');
-  initGraph('pressure');
-  initSpectrum();
+  initGraph('magnetometer');
+
   init3D();
   requestAnimationFrame(draw);
   </script>
