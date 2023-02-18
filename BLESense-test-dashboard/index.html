@@ -20,6 +20,13 @@
     border-radius: 10%; outline:none; font-family: 'Roboto', sans-serif;
   }
 
+  #saveButton {
+    background-color: aqua; border: none; color: black; padding: 1px; text-align: center;
+    text-decoration: none; font-size: 6px; margin: 12px 20px; height: 15px; width: 30px;
+    border-radius: 10%; outline:none; font-family: 'Roboto', sans-serif;
+  }
+
+
   .container {
     width:960px;height:384px;margin-top:30px;margin-bottom:7.5px;  margin: 0 auto;
   }
@@ -77,17 +84,19 @@
   <div class="container">
     <div class="label">&nbsp;&nbsp;IMPORTANT - first upload <a href="https://create.arduino.cc/editor/dpajak/e4128780-d76d-438f-97a4-541740cb0473/preview">sketch</a> to Arduino Nano 33 BLE Sense board<br></div>
     <div class="status widget">
-      <button id="bigButton"></button>
+      <button id="bigButton" onmouseover="" style="cursor: pointer;""></button>
       <div class="label" id="bluetooth">Click button to connect to the board</div>
+      <button id="saveButton" onmouseover="" style="cursor: pointer;""></button>
+      <div class="label" id="bluetooth">save data</div>
     </div>
 
     <div class="square widget" id="3d">
       <div class="label">&#128230;3D</div>
     </div>
 
-    <div class="double widget">
+    <div class="square widget">
       <div class="label">&#128640; Accelerometer</div>
-      <div id="accelerometer" class="doublegraph"></div>
+      <div id="accelerometer" class="graph"></div>
     </div>
 
     <div class="square widget">
@@ -96,7 +105,7 @@
     </div>
     
     <div class="square widget">
-      <div class="label">&#128171; Magnetometer</div>
+      <div class="label">&#129522; Magnetometer</div>
       <div id="magnetometer" class="graph"></div>
     </div>
 
@@ -111,10 +120,9 @@ For earlier versions of Windows and Linux, you still have to go to chrome://flag
 enable the highlighted flag, and restart Chrome for now.
 */
 
-
-
-var maxRecords = 64;
-
+var maxRecords = 640;
+var displayRecords = 64;
+var Acc = [];
 var BLEsense =
 {
   accelerometer:
@@ -137,53 +145,6 @@ var BLEsense =
     properties: ['BLENotify'],
     structure: ['Float32','Float32','Float32'],
     data: {'Mx':[],'My':[],'Mz':[]},
-  },
-  colorimeter:
-  {
-    uuid: '6fbe1da7-2002-44de-92c4-bb6e04fb0212',
-    properties: ['BLENotify'],
-    structure: ['Uint16','Uint16','Uint16'],
-    data: {'R':[], 'G':[], 'B':[]}
-  },
-  microphone:
-  {
-    uuid: '6fbe1da7-5001-44de-92c4-bb6e04fb0212',
-    properties: ['BLENotify'],
-    structure: new Array(32).fill('Uint8'), // an array of 32 'Uint8's
-    data: {'a0':[],'a1':[],'a2':[],'a3':[],'a4':[],'a5':[],'a6':[],'a7':[],'a8':[],'a9':[],'aA':[],'aB':[],'aC':[],'aD':[],'aE':[],'aF':[],
-    'b0':[],'b1':[],'b2':[],'b3':[],'b4':[],'b5':[],'b6':[],'b7':[],'b8':[],'b9':[],'bA':[],'bB':[],'bC':[],'bD':[],'bE':[],'bF':[]}
-  },
-  led:{
-    uuid: '6fbe1da7-6001-44de-92c4-bb6e04fb0212',
-    properties: ['BLEWrite'],
-    structure: ['Uint8','Uint8','Uint8'],
-    data: {'R':[], 'G':[], 'B':[]},
-    writeBusy: false, // we need to track this to avoid 'GATT operation in progress' errors
-    writeValue: null
-  },
-  proximity:{
-    uuid: '6fbe1da7-2003-44de-92c4-bb6e04fb0212',
-    properties: ['BLENotify'],
-    structure: ['Uint8'],
-    data: {proximity:[]}
-  },
-  temperature:{
-    uuid: '6fbe1da7-4002-44de-92c4-bb6e04fb0212',
-    properties: ['BLERead'],
-    structure: ['Float32'],
-    data: {temperature:[]}
-  },
-  humidity:{
-    uuid: '6fbe1da7-4003-44de-92c4-bb6e04fb0212',
-    properties: ['BLERead'],
-    structure: ['Float32'],
-    data: {humidity:[]}
-  },
-  pressure:{
-    uuid: '6fbe1da7-4001-44de-92c4-bb6e04fb0212',
-    properties: ['BLERead'],
-    structure: ['Float32'],
-    data: {pressure:[]}
   }
 }
 
@@ -195,6 +156,8 @@ var bytesPrevious = 0;
 
 // UI elements
 const bigButton = document.getElementById('bigButton');
+const saveButton = document.getElementById('saveButton');
+
 const BLEstatus = document.getElementById('bluetooth');
 
 if ("bluetooth" in navigator) {
@@ -206,6 +169,18 @@ if ("bluetooth" in navigator) {
   msg("browser not supported"); bigButton.style.backgroundColor = "red";
   alert("Error: This browser doesn't support Web Bluetooth. Try using Chrome.");
 }
+
+saveButton.addEventListener('click',function(event){
+  console.log('saving...')
+  console.log(Acc.length)
+  let csvContent = '';
+/*for (let i=0;i<=Ax.length();i++)
+{
+
+}*/
+
+
+})
 
 function msg(m){
   BLEstatus.innerHTML = m;
@@ -271,8 +246,10 @@ async function connect() {
       var unpackedValue = dataViewFn(packetPointer,true);
       // Push sensor reading onto data array
       sensor.data[columns[i]].push(unpackedValue);
+      Acc.push(unpackedValue);
       // Keep array at buffer size
       if (sensor.data[columns[i]].length> maxRecords) {sensor.data[columns[i]].shift();}
+      if (Acc.length> maxRecords) {Acc.shift();}
       // move pointer forward in data packet to next value
       packetPointer += typeMap[dataType].bytes;
       bytesReceived += typeMap[dataType].bytes;
@@ -336,11 +313,11 @@ async function connect() {
       showlegend: false,
       yaxis: {'showticklabels':false},
       xaxis: {
-        'range': [0,maxRecords],
-      'showticklabels':false,
+        'range': [0, maxRecords],
+        'showticklabels':false,
         'autorange': false,
         'showgrid': true,
-  'zeroline': true,
+        'zeroline': true,
         tickfont: {size: 8}
       }
     }
@@ -398,24 +375,7 @@ function init3D(){
   }
 );
 }
-/*
-function colorBars(sensor){
-  // Color + light
-  const canvas = document.getElementById('colors');
-  const ctx = canvas.getContext('2d');
-  const thickness = canvas.width/maxRecords;
-  ctx.fillStyle = "#111111";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  for (i=0;i<maxRecords;i++){
-    R = BLEsense[sensor].data.R[i];
-    G = BLEsense[sensor].data.G[i];
-    B = BLEsense[sensor].data.B[i];
-    total = R + G + B;
-    R=R/total*255;G=G/total*255;B=B/total*255;
-    ctx.fillStyle = "rgba("+R+","+G+","+B+")";
-    ctx.fillRect(i*thickness, 128, thickness-1, -total/5);
-  }
-}*/
+
 // return last item of array
 Array.prototype.latest = function(){return this[this.length - 1];};
 
